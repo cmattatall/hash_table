@@ -180,6 +180,13 @@ void htbl_dtor(htbl_handle handle)
     }
 }
 
+bool htbl_key_exists(htbl_handle handle, const char *key)
+{
+    struct htbl *      tbl      = (struct htbl *)handle;
+    htbl_node_searcher searcher = find_key(tbl, key);
+    return searcher.dest != NULL && searcher.dest->key != NULL;
+}
+
 
 static int hash_code(const struct htbl *tbl, const char *s)
 {
@@ -250,33 +257,6 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
                 searcher.parent = searcher.dest;
                 searcher.dest   = searcher.dest->next;
             } while (searcher.dest != NULL);
-
-
-#if 0
-            while (true)
-            {
-                /* If we haven't walked to the end of the chain */
-                if (searcher.dest != NULL)
-                {
-                    if (searcher.dest->key != NULL)
-                    {
-                        /* If we match the key */
-                        if ((0 == strcmp(searcher.dest->key, key)))
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                searcher.parent = searcher.dest;
-                searcher.dest   = searcher.dest->next;
-
-                if (searcher.dest == NULL)
-                {
-                    break;
-                }
-            }
-#endif
         }
     }
     return searcher;
