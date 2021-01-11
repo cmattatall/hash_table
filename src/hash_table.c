@@ -30,8 +30,8 @@ struct htbl_value
 
 typedef struct
 {
-    htbl_node *curr;
-    htbl_node *prev;
+    htbl_node *dest;
+    htbl_node *parent;
 } htbl_node_searcher;
 
 static int                hash_code(const struct htbl *tbl, const char *s);
@@ -51,10 +51,10 @@ int htbl_remove(htbl_handle handle, const char *key)
     htbl_node_searcher searcher = find_key(tbl, key);
 
     /* If node is in the table */
-    if (searcher.curr != NULL)
+    if (searcher.dest != NULL)
     {
-        searcher.prev->next = searcher.curr->next;
-        node_dtor(searcher.curr);
+        searcher.parent->next = searcher.dest->next;
+        node_dtor(searcher.dest);
         status = 0;
     }
     return status;
@@ -79,19 +79,29 @@ void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
 
     htbl_node_searcher searcher = find_key(tbl, key);
 
-    /* Key doesn't exist in table */
-    if (searcher.curr == NULL)
+    if (searcher.parent == NULL)
     {
-        unsigned int len = strlen(key);
-        searcher.curr    = node_ctor(key, len);
-
-        /* If collision, append to node of head of collision chain */
-        if (searcher.prev != NULL)
+        /* First item in chain (no collisions), dont need to construct */
+        if (key != NULL)
         {
-            searcher.prev->next = searcher.curr;
+            unsigned int len   = strlen(key) + 1;
+            searcher.dest->key = malloc(len);
+            strncpy(searcher.dest->key, key, len);
         }
     }
-    searcher.curr->value = value;
+    else if (searcher.dest == NULL)
+    {
+        /* no match, key not in table. We have to add it */
+        if (key != NULL)
+        {
+            unsigned int len = strlen(key) + 1;
+            searcher.dest    = node_ctor(key, len);
+        }
+
+        /* Link parent node to child node */
+        searcher.parent->next = searcher.dest;
+    }
+    searcher.dest->value = value;
 }
 
 
@@ -100,14 +110,14 @@ int htbl_update(htbl_handle handle, const char *key, htbl_value value)
     int                status   = 0;
     struct htbl *      tbl      = (struct htbl *)handle;
     htbl_node_searcher searcher = find_key(tbl, key);
-    if (searcher.curr == NULL && searcher.prev == NULL)
+    if (searcher.dest == NULL && searcher.parent == NULL)
     {
         /* Key doesn't exist in table */
         status = 1;
     }
     else
     {
-        node_update(searcher.curr, value);
+        node_update(searcher.dest, value);
     }
     return status;
 }
@@ -203,29 +213,62 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
     htbl_node_searcher searcher;
     if (key_idx == -1)
     {
-        searcher.curr = NULL;
-        searcher.prev = NULL;
+        searcher.dest   = NULL;
+        searcher.parent = NULL;
     }
     else
     {
-        searcher.curr = &tbl->nodes[key_idx];
-        searcher.prev = NULL;
+        searcher.dest   = &tbl->nodes[key_idx];
+        searcher.parent = NULL;
 
-        while (searcher.curr != NULL)
+        /* Case of 0 collisions */
+        if (searcher.dest->key == NULL)
         {
-            if ((searcher.curr->key != NULL) &&
-                (0 == strcmp(searcher.curr->key, key)))
+            return searcher;
+        }
+        else
+        {
+            do
             {
-                break;
-            }
-            else
-            {
-                searcher.curr = searcher.curr->next;
-                if (searcher.prev == NULL)
+                if (searcher.dest->key != NULL)
                 {
-                    searcher.prev = searcher.curr;
+                    /* If we match the key */
+                    if ((0 == strcmp(searcher.dest->key, key)))
+                    {
+                        break;
+                    }
+                }
+
+                searcher.parent = searcher.dest;
+                searcher.dest   = searcher.dest->next;
+            } while (searcher.dest != NULL);
+
+
+#if 0
+            while (true)
+            {
+                /* If we haven't walked to the end of the chain */
+                if (searcher.dest != NULL)
+                {
+                    if (searcher.dest->key != NULL)
+                    {
+                        /* If we match the key */
+                        if ((0 == strcmp(searcher.dest->key, key)))
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                searcher.parent = searcher.dest;
+                searcher.dest   = searcher.dest->next;
+
+                if (searcher.dest == NULL)
+                {
+                    break;
                 }
             }
+#endif
         }
     }
     return searcher;
@@ -235,13 +278,16 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
 static htbl_node *node_ctor(const char *key, unsigned int keylen)
 {
     htbl_node *node;
-    node = malloc(sizeof(htbl_node));
-    if (key != NULL)
+    node = malloc(sizeof(*node));
+    if (node != NULL)
     {
         node->key = malloc(keylen);
-        strncpy(node->key, key, keylen);
+        reset_htbl_node(node);
+        if (node->key != NULL)
+        {
+            strncpy(node->key, key, keylen);
+        }
     }
-    reset_htbl_node(node);
     return node;
 }
 

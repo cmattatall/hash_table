@@ -36,16 +36,16 @@ static const char *vals[] = {
 int main(void)
 {
     assert((sizeof(vals) / sizeof(*vals)) == (sizeof(keys) / sizeof(*keys)));
-    htbl_handle  tbl = htbl_ctor(10);
+    htbl_handle  tbl = htbl_ctor(1);
     unsigned int i;
     unsigned int max_i = sizeof(vals) / sizeof(*vals);
     for (i = 0; i < max_i; i++)
     {
         char *key = malloc(strlen(keys[i]) + 1);
+        strcpy(key, keys[i]);
         char *val = malloc(strlen(vals[i]) + 1);
-
+        strcpy(val, vals[i]);
         htbl_insert(tbl, key, htbl_value_ctor(val, free));
-        free(key);
     }
 
     for (i = 0; i < max_i; i++)
