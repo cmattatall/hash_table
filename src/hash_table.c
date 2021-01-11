@@ -109,7 +109,11 @@ void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
         /* Link parent node to child node */
         searcher.parent->next = searcher.dest;
     }
-    searcher.dest->value = value;
+
+    if (searcher.dest != NULL)
+    {
+        searcher.dest->value = value;
+    }
 }
 
 
