@@ -24,7 +24,7 @@ struct htbl
 struct htbl_value
 {
     void *value;
-    void (*delete)(void *);
+    void (*dtor)(void *);
 };
 
 
@@ -35,7 +35,7 @@ typedef struct
 } htbl_node_searcher;
 
 static int                hash_code(const struct htbl *tbl, const char *s);
-static htbl_node          empty_htbl_node(void);
+static void               reset_htbl_node(htbl_node *node);
 static htbl_node_searcher find_key(const struct htbl *tbl, const char *key);
 static htbl_node *        node_ctor(void);
 static void               node_dtor(htbl_node *node);
@@ -58,11 +58,11 @@ void htbl_remove(htbl_handle handle, const char *key)
 }
 
 
-htbl_value htbl_value_ctor(void *value, void (*delete)(void *))
+htbl_value htbl_value_ctor(void *value, void (*dtor)(void *))
 {
     htbl_value valstruct;
-    valstruct->delete = delete;
-    valstruct->value  = value;
+    valstruct->dtor  = dtor;
+    valstruct->value = value;
     return valstruct;
 }
 
@@ -109,11 +109,20 @@ htbl_handle htbl_ctor(unsigned int size)
         tbl->size = size;
     }
 
-    unsigned int i;
-    for (i = 0; i < tbl->size; i++)
+    tbl->nodes = malloc(tbl->size * sizeof(*(tbl->nodes)));
+    if (tbl->nodes == NULL)
     {
-        tbl->nodes[i] = empty_htbl_node();
+        free(tbl);
     }
+    else
+    {
+        unsigned int i;
+        for (i = 0; i < tbl->size; i++)
+        {
+            reset_htbl_node(&tbl->nodes[i]);
+        }
+    }
+
     return (htbl_handle)tbl;
 }
 
@@ -150,14 +159,15 @@ static int hash_code(const struct htbl *tbl, const char *s)
 }
 
 
-static htbl_node empty_htbl_node(void)
+static void reset_htbl_node(htbl_node *node)
 {
-    htbl_node node;
-    strcpy(node.key, "");
-    node.next          = NULL;
-    node.value->value  = NULL;
-    node.value->delete = NULL;
-    return node;
+    if (node != NULL)
+    {
+        htbl_node node;
+        strcpy(node.key, "");
+        node.next  = NULL;
+        node.value = NULL;
+    }
 }
 
 
@@ -191,8 +201,8 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
 static htbl_node *node_ctor(void)
 {
     htbl_node *node;
-    node  = malloc(sizeof(htbl_node));
-    *node = empty_htbl_node();
+    node = malloc(sizeof(htbl_node));
+    reset_htbl_node(node);
     return node;
 }
 
@@ -200,9 +210,9 @@ static htbl_node *node_ctor(void)
 static void node_dtor(htbl_node *node)
 {
     /* If value has a destructor, call it */
-    if (node->value->delete != NULL)
+    if (node->value->dtor != NULL)
     {
-        node->value->delete (node->value->value);
+        node->value->dtor(node->value->value);
     }
     free(node);
 }
@@ -212,9 +222,9 @@ static void node_update(htbl_node *node, htbl_value value)
 {
     if (node != NULL)
     {
-        if (node->value->delete != NULL)
+        if (node->value->dtor != NULL)
         {
-            node->value->delete (node->value->value);
+            node->value->dtor(node->value->value);
         }
         node->value = value;
     }

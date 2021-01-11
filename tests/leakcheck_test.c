@@ -16,7 +16,7 @@
 
 int main(void)
 {
-    htbl_handle tbl = htbl_ctor(10);
+    htbl_handle tbl = htbl_ctor(2);
     htbl_dtor(tbl);
     return 0;
 }
