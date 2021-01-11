@@ -5,7 +5,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/tests/C_HASH_TABLE_leakcheck_test.out",
+            "program": "${workspaceFolder}/build/tests/C_HASH_TABLE_insert_leakcheck_test.out",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

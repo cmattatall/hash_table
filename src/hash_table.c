@@ -41,6 +41,7 @@ static htbl_node *        node_ctor(void);
 static void               node_dtor(htbl_node *node);
 static void               node_update(htbl_node *node, htbl_value value);
 static bool               key_in_tbl(const struct htbl *tbl, const char *key);
+static void               htbl_value_dtor(htbl_value value);
 
 
 void htbl_remove(htbl_handle handle, const char *key)
@@ -60,9 +61,12 @@ void htbl_remove(htbl_handle handle, const char *key)
 
 htbl_value htbl_value_ctor(void *value, void (*dtor)(void *))
 {
-    htbl_value valstruct;
-    valstruct->dtor  = dtor;
-    valstruct->value = value;
+    htbl_value valstruct = malloc(sizeof(*valstruct));
+    if (valstruct != NULL)
+    {
+        valstruct->dtor  = dtor;
+        valstruct->value = value;
+    }
     return valstruct;
 }
 
@@ -166,7 +170,7 @@ static void reset_htbl_node(htbl_node *node)
         htbl_node node;
         strcpy(node.key, "");
         node.next  = NULL;
-        node.value = NULL;
+        node.value = htbl_value_ctor(NULL, NULL);
     }
 }
 
@@ -210,11 +214,20 @@ static htbl_node *node_ctor(void)
 static void node_dtor(htbl_node *node)
 {
     /* If value has a destructor, call it */
-    if (node->value->dtor != NULL)
-    {
-        node->value->dtor(node->value->value);
-    }
+    htbl_value_dtor(node->value);
     free(node);
+}
+
+static void htbl_value_dtor(htbl_value value)
+{
+    if (value != NULL)
+    {
+        if (value->dtor != NULL)
+        {
+            value->dtor(value->value);
+        }
+        free(value);
+    }
 }
 
 
@@ -222,10 +235,7 @@ static void node_update(htbl_node *node, htbl_value value)
 {
     if (node != NULL)
     {
-        if (node->value->dtor != NULL)
-        {
-            node->value->dtor(node->value->value);
-        }
+        htbl_value_dtor(node->value);
         node->value = value;
     }
 }
