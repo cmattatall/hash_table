@@ -39,7 +39,6 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key);
 static htbl_node *        node_ctor(const char *key, unsigned int keylen);
 static void               node_dtor(htbl_node *node);
 static void               node_update(htbl_node *node, htbl_value value);
-static bool               key_in_tbl(const struct htbl *tbl, const char *key);
 static void               htbl_value_dtor(htbl_value value);
 
 
