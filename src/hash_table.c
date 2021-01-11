@@ -53,7 +53,15 @@ int htbl_remove(htbl_handle handle, const char *key)
     /* If node is in the table */
     if (searcher.dest != NULL)
     {
-        searcher.parent->next = searcher.dest->next;
+        /* If not last item in chain, link with parent */
+        if (searcher.dest->next != NULL)
+        {
+            if (searcher.parent != NULL)
+            {
+                /* If it isn't the only item at the hash index */
+                searcher.parent->next = searcher.dest->next;
+            }
+        }
         node_dtor(searcher.dest);
         status = 0;
     }
