@@ -9,7 +9,7 @@ typedef struct htbl_node htbl_node;
 
 struct htbl_node
 {
-    char              key[50];
+    char *            key;
     htbl_value        value;
     struct htbl_node *next;
 };
@@ -35,9 +35,8 @@ typedef struct
 } htbl_node_searcher;
 
 static int                hash_code(const struct htbl *tbl, const char *s);
-static void               reset_htbl_node(htbl_node *node);
 static htbl_node_searcher find_key(const struct htbl *tbl, const char *key);
-static htbl_node *        node_ctor(void);
+static htbl_node *        node_ctor(const char *key, unsigned int keylen);
 static void               node_dtor(htbl_node *node);
 static void               node_update(htbl_node *node, htbl_value value);
 static bool               key_in_tbl(const struct htbl *tbl, const char *key);
@@ -83,8 +82,14 @@ void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
     /* Key doesn't exist in table */
     if (searcher.curr == NULL)
     {
-        searcher.curr       = node_ctor();
-        searcher.prev->next = searcher.curr;
+        unsigned int len = strlen(key);
+        searcher.curr    = node_ctor(key, len);
+
+        /* If collision, append to node of head of collision chain */
+        if (searcher.prev != NULL)
+        {
+            searcher.prev->next = searcher.curr;
+        }
     }
     searcher.curr->value = value;
 }
@@ -128,7 +133,9 @@ htbl_handle htbl_ctor(unsigned int size)
         unsigned int i;
         for (i = 0; i < tbl->size; i++)
         {
-            reset_htbl_node(&tbl->nodes[i]);
+            tbl->nodes[i].key   = NULL;
+            tbl->nodes[i].next  = NULL;
+            tbl->nodes[i].value = NULL;
         }
     }
 
@@ -180,10 +187,12 @@ static void reset_htbl_node(htbl_node *node)
 {
     if (node != NULL)
     {
-        htbl_node node;
-        strcpy(node.key, "");
-        node.next  = NULL;
-        node.value = htbl_value_ctor(NULL, NULL);
+        if (node->key != NULL)
+        {
+            strcpy(node->key, "");
+        }
+        node->next  = NULL;
+        node->value = htbl_value_ctor(NULL, NULL);
     }
 }
 
@@ -204,7 +213,8 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
 
         while (searcher.curr != NULL)
         {
-            if (0 == strcmp(searcher.curr->key, key))
+            if ((searcher.curr->key != NULL) &&
+                (0 == strcmp(searcher.curr->key, key)))
             {
                 break;
             }
@@ -222,10 +232,15 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
 }
 
 
-static htbl_node *node_ctor(void)
+static htbl_node *node_ctor(const char *key, unsigned int keylen)
 {
     htbl_node *node;
     node = malloc(sizeof(htbl_node));
+    if (key != NULL)
+    {
+        node->key = malloc(keylen);
+        strncpy(node->key, key, keylen);
+    }
     reset_htbl_node(node);
     return node;
 }
@@ -234,8 +249,15 @@ static htbl_node *node_ctor(void)
 static void node_dtor(htbl_node *node)
 {
     /* If value has a destructor, call it */
-    htbl_value_dtor(node->value);
-    free(node);
+    if (node != NULL)
+    {
+        if (node->key != NULL)
+        {
+            free(node->key);
+        }
+        htbl_value_dtor(node->value);
+        free(node);
+    }
 }
 
 static void htbl_value_dtor(htbl_value value)

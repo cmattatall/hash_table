@@ -43,10 +43,10 @@ int main(void)
     for (i = 0; i < max_i; i++)
     {
         char *key = malloc(strlen(keys[i]) + 1);
-        strcpy(key, ""); /* append \0 */
+        strcpy(key, keys[i]); /* append \0 */
 
         char *val = malloc(strlen(vals[i]) + 1);
-        strcpy(val, ""); /* append \0 */
+        strcpy(val, vals[i]); /* append \0 */
         htbl_insert(tbl, key, htbl_value_ctor(val, free));
         free(key);
     }
