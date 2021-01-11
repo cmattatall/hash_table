@@ -211,18 +211,7 @@ static int hash_code(const struct htbl *tbl, const char *s)
 }
 
 
-static void reset_htbl_node(htbl_node *node)
-{
-    if (node != NULL)
-    {
-        if (node->key != NULL)
-        {
-            strcpy(node->key, "");
-        }
-        node->next  = NULL;
-        node->value = htbl_value_ctor(NULL, NULL);
-    }
-}
+
 
 
 static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
@@ -272,8 +261,9 @@ static htbl_node *node_ctor(const char *key, unsigned int keylen)
     node = malloc(sizeof(*node));
     if (node != NULL)
     {
-        node->key = malloc(keylen);
-        reset_htbl_node(node);
+        node->next  = NULL;
+        node->value = NULL;
+        node->key   = malloc(keylen);
         if (node->key != NULL)
         {
             strncpy(node->key, key, keylen);
