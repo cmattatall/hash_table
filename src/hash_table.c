@@ -44,9 +44,10 @@ static bool               key_in_tbl(const struct htbl *tbl, const char *key);
 static void               htbl_value_dtor(htbl_value value);
 
 
-void htbl_remove(htbl_handle handle, const char *key)
+int htbl_remove(htbl_handle handle, const char *key)
 {
-    struct htbl *tbl = (struct htbl *)handle;
+    int          status = 1;
+    struct htbl *tbl    = (struct htbl *)handle;
 
     htbl_node_searcher searcher = find_key(tbl, key);
 
@@ -55,7 +56,9 @@ void htbl_remove(htbl_handle handle, const char *key)
     {
         searcher.prev->next = searcher.curr->next;
         node_dtor(searcher.curr);
+        status = 0;
     }
+    return status;
 }
 
 
@@ -89,17 +92,19 @@ void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
 
 int htbl_update(htbl_handle handle, const char *key, htbl_value value)
 {
-    struct htbl *tbl = (struct htbl *)handle;
-
+    int                status   = 0;
+    struct htbl *      tbl      = (struct htbl *)handle;
     htbl_node_searcher searcher = find_key(tbl, key);
-
-    /* Key doesn't exist in table */
-    if (searcher.curr == NULL)
+    if (searcher.curr == NULL && searcher.prev == NULL)
     {
-        return 1;
+        /* Key doesn't exist in table */
+        status = 1;
     }
-    node_update(searcher.curr, value);
-    return 0;
+    else
+    {
+        node_update(searcher.curr, value);
+    }
+    return status;
 }
 
 
@@ -153,13 +158,21 @@ void htbl_dtor(htbl_handle handle)
 
 static int hash_code(const struct htbl *tbl, const char *s)
 {
-    int h = 0;
-    while (*s)
+    int idx;
+    if (tbl == NULL || s == NULL)
     {
-        h = 31 * h + (*s++);
+        idx = -1;
     }
-    h = h % tbl->size;
-    return h;
+    else
+    {
+        int h = 0;
+        while (*s)
+        {
+            h = 31 * h + (*s++);
+        }
+        idx = h % tbl->size;
+    }
+    return idx;
 }
 
 
@@ -179,25 +192,32 @@ static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
 {
     int                key_idx = hash_code(tbl, key);
     htbl_node_searcher searcher;
-    searcher.curr = &tbl->nodes[key_idx];
-    searcher.prev = NULL;
-
-    while (searcher.curr != NULL)
+    if (key_idx == -1)
     {
-        if (0 == strcmp(searcher.curr->key, key))
+        searcher.curr = NULL;
+        searcher.prev = NULL;
+    }
+    else
+    {
+        searcher.curr = &tbl->nodes[key_idx];
+        searcher.prev = NULL;
+
+        while (searcher.curr != NULL)
         {
-            break;
-        }
-        else
-        {
-            searcher.curr = searcher.curr->next;
-            if (searcher.prev == NULL)
+            if (0 == strcmp(searcher.curr->key, key))
             {
-                searcher.prev = searcher.curr;
+                break;
+            }
+            else
+            {
+                searcher.curr = searcher.curr->next;
+                if (searcher.prev == NULL)
+                {
+                    searcher.prev = searcher.curr;
+                }
             }
         }
     }
-
     return searcher;
 }
 

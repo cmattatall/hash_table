@@ -15,7 +15,7 @@ void        htbl_dtor(htbl_handle handle);
 
 htbl_value htbl_value_ctor(void *value, void (*dtor)(void *));
 void       htbl_insert(htbl_handle handle, const char *key, htbl_value value);
-void       htbl_remove(htbl_handle handle, const char *key);
+int        htbl_remove(htbl_handle handle, const char *key);
 int        htbl_update(htbl_handle handle, const char *key, htbl_value value);
 
 
