@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "hash_table.h"
 
@@ -26,9 +27,20 @@ struct htbl_value
     void (*delete)(void *);
 };
 
-static int        hashCode(const char *s);
-static htbl_node  empty_htbl_node(void);
-static htbl_node *traverse(const htbl_node *node);
+
+typedef struct
+{
+    htbl_node *curr;
+    htbl_node *prev;
+} htbl_node_searcher;
+
+static int       hash_code(const struct htbl *tbl, const char *s);
+static htbl_node empty_htbl_node(void);
+
+static htbl_node_searcher find_key(const struct htbl *tbl, const char *key);
+static htbl_node *        node_ctor(void);
+static void               node_dtor(htbl_node *node);
+static bool               key_in_tbl(const struct htbl *tbl, const char *key);
 
 
 htbl_value htbl_value_new(void *value, void (*delete)(void *))
@@ -40,12 +52,19 @@ htbl_value htbl_value_new(void *value, void (*delete)(void *))
 }
 
 
-int htbl_insert(htbl_handle handle, const char *key, htbl_value value)
+void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
 {
     struct htbl *tbl = (struct htbl *)handle;
 
-    int idx = hashCode(key);
-    idx     = idx % tbl->size;
+    htbl_node_searcher searcher = find_key(tbl, key);
+
+    /* Key doesn't exist in table */
+    if (searcher.curr == NULL)
+    {
+        searcher.curr       = node_ctor();
+        searcher.prev->next = searcher.curr;
+    }
+    searcher.curr->value = value;
 }
 
 
@@ -82,27 +101,20 @@ void htbl_dtor(htbl_handle handle)
         {
             tmp          = current_node;
             current_node = current_node->next;
-
-            /* If value has a destructor, call it */
-            if (tmp->value->delete != NULL)
-            {
-                tmp->value->delete (tmp->value->value);
-            }
-
-            /* Free the last node we traversed */
-            free(tmp);
+            node_dtor(tmp);
         }
     }
 }
 
 
-static int hashCode(const char *s)
+static int hash_code(const struct htbl *tbl, const char *s)
 {
     int h = 0;
     while (*s)
     {
         h = 31 * h + (*s++);
     }
+    h = h % tbl->size;
     return h;
 }
 
@@ -111,7 +123,55 @@ static htbl_node empty_htbl_node(void)
 {
     htbl_node node;
     strcpy(node.key, "");
-    node.next  = NULL;
-    node.value = NULL;
+    node.next          = NULL;
+    node.value->value  = NULL;
+    node.value->delete = NULL;
     return node;
+}
+
+
+static htbl_node_searcher find_key(const struct htbl *tbl, const char *key)
+{
+    int                key_idx = hash_code(tbl, key);
+    htbl_node_searcher searcher;
+    searcher.curr = &tbl->nodes[key_idx];
+    searcher.prev = NULL;
+
+    while (searcher.curr != NULL)
+    {
+        if (0 == strcmp(searcher.curr->key, key))
+        {
+            break;
+        }
+        else
+        {
+            searcher.curr = searcher.curr->next;
+            if (searcher.prev == NULL)
+            {
+                searcher.prev = searcher.curr;
+            }
+        }
+    }
+
+    return searcher;
+}
+
+
+static htbl_node *node_ctor(void)
+{
+    htbl_node *node;
+    node  = malloc(sizeof(htbl_node));
+    *node = empty_htbl_node();
+    return node;
+}
+
+
+static void node_dtor(htbl_node *node)
+{
+    /* If value has a destructor, call it */
+    if (node->value->delete != NULL)
+    {
+        node->value->delete (node->value->value);
+    }
+    free(node);
 }

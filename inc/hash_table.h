@@ -11,9 +11,10 @@ typedef void *             htbl_handle;
 typedef struct htbl_value *htbl_value;
 
 htbl_handle htbl_ctor(unsigned int size);
-void htbl_dtor(htbl_handle handle);
+void        htbl_dtor(htbl_handle handle);
 
-htbl_value htbl_value_new(void * value, void (*delete)(void*));
+htbl_value htbl_value_new(void *value, void (*delete)(void *));
+void       htbl_insert(htbl_handle handle, const char *key, htbl_value value);
 
 
 #ifdef __cplusplus

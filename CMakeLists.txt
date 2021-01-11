@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 
-
 option(BUILD_TESTING "[ON/OFF] Build tests in addition to library." OFF)
 option(BUILD_EXAMPLES "[ON/OFF] Build examples in addition to library." OFF)
 option(VERBOSE "[ON/OFF] Emit verbose messages during configuration" OFF)
-
 
 macro(log_verbose msg)
     if(VERBOSE)
@@ -14,9 +12,9 @@ endmacro(log_verbose msg)
 
 
 project(
-    TEMPLATE_PROJ
+    C_HASH_TABLE
     VERSION 1.0
-    DESCRIPTION "EXAMPLE PROJECT FOR CMAKE PROJECT TEMPLATE REPOSITORY"
+    DESCRIPTION "HASH TABLE IMPLEMENTATION IN CASE I EVER NEED IT IN THE FUTURE"
     LANGUAGES C CXX
 )
 set(CURRENT_TARGET ${PROJECT_NAME})
