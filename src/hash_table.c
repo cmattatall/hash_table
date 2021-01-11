@@ -34,16 +34,31 @@ typedef struct
     htbl_node *prev;
 } htbl_node_searcher;
 
-static int       hash_code(const struct htbl *tbl, const char *s);
-static htbl_node empty_htbl_node(void);
-
+static int                hash_code(const struct htbl *tbl, const char *s);
+static htbl_node          empty_htbl_node(void);
 static htbl_node_searcher find_key(const struct htbl *tbl, const char *key);
 static htbl_node *        node_ctor(void);
 static void               node_dtor(htbl_node *node);
+static void               node_update(htbl_node *node, htbl_value value);
 static bool               key_in_tbl(const struct htbl *tbl, const char *key);
 
 
-htbl_value htbl_value_new(void *value, void (*delete)(void *))
+void htbl_remove(htbl_handle handle, const char *key)
+{
+    struct htbl *tbl = (struct htbl *)handle;
+
+    htbl_node_searcher searcher = find_key(tbl, key);
+
+    /* If node is in the table */
+    if (searcher.curr != NULL)
+    {
+        searcher.prev->next = searcher.curr->next;
+        node_dtor(searcher.curr);
+    }
+}
+
+
+htbl_value htbl_value_ctor(void *value, void (*delete)(void *))
 {
     htbl_value valstruct;
     valstruct->delete = delete;
@@ -65,6 +80,22 @@ void htbl_insert(htbl_handle handle, const char *key, htbl_value value)
         searcher.prev->next = searcher.curr;
     }
     searcher.curr->value = value;
+}
+
+
+int htbl_update(htbl_handle handle, const char *key, htbl_value value)
+{
+    struct htbl *tbl = (struct htbl *)handle;
+
+    htbl_node_searcher searcher = find_key(tbl, key);
+
+    /* Key doesn't exist in table */
+    if (searcher.curr == NULL)
+    {
+        return 1;
+    }
+    node_update(searcher.curr, value);
+    return 0;
 }
 
 
@@ -174,4 +205,17 @@ static void node_dtor(htbl_node *node)
         node->value->delete (node->value->value);
     }
     free(node);
+}
+
+
+static void node_update(htbl_node *node, htbl_value value)
+{
+    if (node != NULL)
+    {
+        if (node->value->delete != NULL)
+        {
+            node->value->delete (node->value->value);
+        }
+        node->value = value;
+    }
 }
